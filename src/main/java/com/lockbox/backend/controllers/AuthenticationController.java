@@ -76,7 +76,7 @@ public class AuthenticationController {
 
             // Prepare response data
             Map<String, Object> responseData = new HashMap<>();
-            responseData.put("customerId", user.getId()); // Assuming you want to send the user ID back
+            responseData.put("customerId", user.getId());
 
             return ResponseEntity.ok(responseData);
         } catch (AuthenticationException e) {

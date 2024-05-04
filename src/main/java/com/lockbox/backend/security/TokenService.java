@@ -33,10 +33,11 @@ public class TokenService {
                 .issuer("LockBoxApp")
                 .issuedAt(now)
                 .expiresAt(now.plus(tokenValidityDuration, ChronoUnit.HOURS))
-                .subject(authentication.getName())
+                .subject(authentication.getName()) // Make sure this is getting the correct username
                 .claim("scope", scope)
-                .claim("tokenId", UUID.randomUUID().toString())
+                .claim("tokenId", UUID.randomUUID().toString()) // Ensure this is unique
                 .build();
         return this.encoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
+
 }

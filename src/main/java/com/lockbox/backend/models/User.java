@@ -20,7 +20,8 @@ public final class User {
     public User() {
     }
 
-    public User(String email, String password, String ipAddress, String country, String role, String accountStatus, LocalDateTime lastLogin) {
+    public User(int id, String email, String password, String ipAddress, String country, String role, String accountStatus, LocalDateTime lastLogin) {
+        this.id = id;
         this.email = email;
         this.password = password;
         this.ipAddress = ipAddress;
@@ -47,7 +48,7 @@ public final class User {
     }
 
     public int getId() {
-        return id;
+        return this.id;
     }
 
     public void setId(int id) {

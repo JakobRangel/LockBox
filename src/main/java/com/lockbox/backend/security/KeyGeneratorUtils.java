@@ -15,6 +15,7 @@ public class KeyGeneratorUtils {
             KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
             keyPairGenerator.initialize(DEFAULT_KEY_SIZE);
             keyPair = keyPairGenerator.generateKeyPair();
+
         } catch (NoSuchAlgorithmException ex) {
             throw new SecurityException("RSA algorithm not available", ex);
         }

@@ -39,39 +39,38 @@ import java.util.stream.Collectors;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-public class SecurityConfig{
-    private final RSAKey rsaKey;
+public class SecurityConfig {
 
-    public SecurityConfig() {
-        this.rsaKey = Jwks.generateRsa();
-    }
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
+
     @Bean
     public JwtCookieAuthenticationFilter jwtCookieAuthenticationFilter() {
         return new JwtCookieAuthenticationFilter(jwtTokenUtil);
     }
 
+    @Autowired
+    private RSAKey rsaKey;
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtCookieAuthenticationFilter jwtCookieAuthenticationFilter) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/login", "/register").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/", "/uploads/**").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtCookieAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtCookieAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
                 .logout(logout -> logout
                         .logoutSuccessHandler(logoutSuccessHandler())
                         .deleteCookies("token")
                         .logoutSuccessUrl("/"));
 
-        return http.build(); // Ensure that .build() is called only once and exactly at the end of the chain
+        return http.build();
     }
-
 
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
@@ -91,7 +90,7 @@ public class SecurityConfig{
     }
 
     @Bean
-    public JwtDecoder jwtDecoder() throws JOSEException {
+    public JwtDecoder jwtDecoder(RSAKey rsaKey) throws JOSEException {
         return NimbusJwtDecoder.withPublicKey(rsaKey.toRSAPublicKey()).build();
     }
 
@@ -101,7 +100,7 @@ public class SecurityConfig{
     }
 
     @Bean
-    public JWKSource<SecurityContext> jwkSource() {
+    public JWKSource<SecurityContext> jwkSource(RSAKey rsaKey) {
         JWKSet jwkSet = new JWKSet(rsaKey);
         return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
     }
@@ -121,6 +120,4 @@ public class SecurityConfig{
                 .map(Cookie::getValue)
                 .orElse(null);
     }
-
-
 }
