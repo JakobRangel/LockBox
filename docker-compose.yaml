@@ -1,0 +1,10 @@
+services:
+  ducks-database:
+    image: postgres:alpine
+    container_name: lockbox
+    ports:
+      - "6001:5432"
+    environment:
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: lockbox
