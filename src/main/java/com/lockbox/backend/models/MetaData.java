@@ -9,7 +9,8 @@ import java.util.Date;
 public class MetaData {
 
     @Id
-    @Column(length = 100)
+    private String uuid;
+
     private String fileName;
 
     private String link;
@@ -21,6 +22,8 @@ public class MetaData {
     private String extension;
 
     private int uploaderId;
+
+    boolean isEncrypted;
 
     public MetaData() {
         // Default constructor required by JPA
@@ -40,6 +43,21 @@ public class MetaData {
         return link;
     }
 
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
+    public boolean isEncrypted() {
+        return isEncrypted;
+    }
+
+    public void setEncrypted(boolean encrypted) {
+        isEncrypted = encrypted;
+    }
     public void setLink(String link) {
         this.link = link;
     }

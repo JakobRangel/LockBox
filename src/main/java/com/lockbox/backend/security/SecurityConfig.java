@@ -29,6 +29,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.http.HttpMethod;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -51,15 +55,27 @@ public class SecurityConfig {
 
     @Autowired
     private RSAKey rsaKey;
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowCredentials(true);  // Important for cookies, authorization headers with HTTPS
+        configuration.addAllowedOrigin("https://jakobrangel.github.io");  // Your frontend URL
+        configuration.addAllowedMethod("*");  // Allow all methods
+        configuration.addAllowedHeader("*");  // Allow all headers
+        configuration.setExposedHeaders(Arrays.asList("Set-Cookie"));  // Expose 'Set-Cookie' header
 
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);  // Apply CORS configuration to all paths
+        return source;
+    }
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtCookieAuthenticationFilter jwtCookieAuthenticationFilter) throws Exception {
         http
-                .cors(Customizer.withDefaults())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))  // Use custom CORS configuration
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/login", "/register").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/", "/uploads/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/login", "/register", "/upload").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/", "/uploads/**", "/logout", "/auth-status").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtCookieAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -67,6 +83,7 @@ public class SecurityConfig {
                 .logout(logout -> logout
                         .logoutSuccessHandler(logoutSuccessHandler())
                         .deleteCookies("token")
+                        .deleteCookies("userId")
                         .logoutSuccessUrl("/"));
 
         return http.build();
@@ -86,6 +103,7 @@ public class SecurityConfig {
         return (request, response, authentication) -> {
             response.setStatus(HttpServletResponse.SC_OK);
             response.setHeader(HttpHeaders.SET_COOKIE, "token=; Max-Age=0; path=/; HttpOnly");
+            response.addHeader(HttpHeaders.SET_COOKIE, "userId=; Max-Age=0; path=/; HttpOnly");
         };
     }
 

@@ -30,7 +30,7 @@ public class TokenService {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(" "));
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("LockBoxApp")
+                .issuer("LockBox")
                 .issuedAt(now)
                 .expiresAt(now.plus(tokenValidityDuration, ChronoUnit.HOURS))
                 .subject(authentication.getName()) // Make sure this is getting the correct username

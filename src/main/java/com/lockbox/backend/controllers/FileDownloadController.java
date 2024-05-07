@@ -1,46 +1,96 @@
 package com.lockbox.backend.controllers;
 
+import com.lockbox.backend.models.MetaData;
+import com.lockbox.backend.repositories.FileEncryptorRepository;
+import com.lockbox.backend.repositories.MetaDataRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
+import org.springframework.web.bind.annotation.RequestParam;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Base64;
 
-@RestController
+@Controller
+@CrossOrigin
 public class FileDownloadController {
+    @Autowired
+    private MetaDataRepository metaDataRepository;
 
-    @GetMapping("/uploads/{fileName:.+}")
-    public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) throws IOException {
+    @GetMapping("/uploads/{uuid:.+}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String uuid,
+                                                 @RequestParam(value = "encryptionString", required = false) String encryptionString) throws Exception {
+
+
         // Get the root directory of the project
         String projectRoot = System.getProperty("user.dir");
 
-        // Resolve the file path
-        Path filePath = Paths.get(projectRoot, "/uploads/", fileName);
-        Resource resource = new UrlResource(filePath.toUri());
+        MetaData metaData = metaDataRepository.getMetaDataByUUID(uuid);
+        Path path = Paths.get(projectRoot, "/uploads/", uuid);
+        // Check if the file exists
+        if (!Files.exists(path)) {
+            return ResponseEntity.notFound().build();
+        }
 
-        if (resource.exists() && resource.isReadable()) {
+
+        if(metaData.isEncrypted()) {
+            if(encryptionString == null) {
+                return ResponseEntity.badRequest().build();
+            }
+            // Resolve the encrypted file path
+            Path encryptedFilePath = path;
+            ByteArrayOutputStream decryptedOutputStream = new ByteArrayOutputStream();
+            FileEncryptorRepository.decryptFile(encryptedFilePath.toFile(), encryptionString, decryptedOutputStream);
+            ByteArrayResource resource = new ByteArrayResource(decryptedOutputStream.toByteArray());
             // Determine the content type based on the file extension
-            String contentType = determineContentType(fileName);
+            String contentType = determineContentType(metaData.getFileName());
 
             // Prepare the HTTP headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(contentType));
-            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName);
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + metaData.getFileName());
 
-            // Return the file as a ResponseEntity
+            // Return the decrypted file as a ResponseEntity
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(resource);
         } else {
-            // File not found
-            return ResponseEntity.notFound().build();
+            // Resolve the file path
+            Path filePath = path;
+            Resource resource = new UrlResource(filePath.toUri());
+            if (resource.exists() && resource.isReadable()) {
+                // Determine the content type based on the file extension
+                String contentType = determineContentType(metaData.getFileName());
+                // Prepare the HTTP headers
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.parseMediaType(contentType));
+                headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + metaData.getFileName());
+
+                // Return the file as a ResponseEntity
+                return ResponseEntity.ok()
+                        .headers(headers)
+                        .body(resource);
+            } else {
+                // File not found
+                return ResponseEntity.notFound().build();
+            }
+
+
         }
     }
 

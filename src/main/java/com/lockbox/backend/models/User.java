@@ -27,8 +27,8 @@ public final class User {
         this.ipAddress = ipAddress;
         this.country = country;
         this.role = role;
-        this.accountStatus = accountStatus;
-        this.lastLogin = lastLogin;
+        this.accountStatus = (accountStatus != null) ? accountStatus : "ACTIVE"; // Set default if not provided
+        this.lastLogin = (lastLogin != null) ? lastLogin : LocalDateTime.now(); // Set default if not provided
     }
 
     public String getEmail() {
