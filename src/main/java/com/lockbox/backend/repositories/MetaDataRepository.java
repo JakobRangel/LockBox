@@ -6,12 +6,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface MetaDataRepository
         extends CrudRepository<MetaData, String> {
-    @Query("SELECT m FROM MetaData m WHERE m.fileName = :fileName")
-    MetaData getMetaDataByFileName(String fileName);
+    MetaData findByFileName(String fileName);
+    MetaData findByUuid(String uuid);
+    List<MetaData> findByFileNameContaining(String name);
 
-    @Query("SELECT m FROM MetaData m WHERE m.uuid = :uuid")
-    MetaData getMetaDataByUUID(String uuid);
 }

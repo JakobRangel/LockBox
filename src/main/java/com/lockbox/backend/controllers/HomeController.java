@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
     @GetMapping
     public String greeting() {
-        return "Welcome to the Lockbox service";
+        return "Welcome to the Lockbox";
     }
 
 }

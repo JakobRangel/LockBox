@@ -3,33 +3,56 @@ package com.lockbox.backend.models;
 import jakarta.persistence.*;
 
 import java.util.Date;
-
+/**
+ * Entity representing metadata for files stored in the LockBox system.
+ */
 @Entity
-@Table(schema = "lockbox", name="files")
+@Table(name = "files", schema = "lockbox")
 public class MetaData {
 
     @Id
+    @Column(name = "uuid")
     private String uuid;
 
+    @Column(name = "file_name")
     private String fileName;
 
+    @Column(name = "link")
     private String link;
 
+    @Column(name = "size")
     private long size;
 
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "upload_date")
     private Date uploadDate;
 
+    @Column(name = "extension")
     private String extension;
 
+    @Column(name = "uploader_id")
     private int uploaderId;
 
-    boolean isEncrypted;
+    @Column(name = "is_encrypted")
+    private boolean isEncrypted;
 
-    public MetaData() {
-        // Default constructor required by JPA
-    }
+    @Column(name = "is_private")
+    private boolean isPrivate;
+
+    /**
+     * Default constructor required by JPA.
+     */
+    public MetaData() {}
 
     // Getters and setters
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
 
     public String getFileName() {
         return fileName;
@@ -43,21 +66,6 @@ public class MetaData {
         return link;
     }
 
-
-    public String getUuid() {
-        return uuid;
-    }
-
-    public void setUuid(String uuid) {
-        this.uuid = uuid;
-    }
-    public boolean isEncrypted() {
-        return isEncrypted;
-    }
-
-    public void setEncrypted(boolean encrypted) {
-        isEncrypted = encrypted;
-    }
     public void setLink(String link) {
         this.link = link;
     }
@@ -92,5 +100,21 @@ public class MetaData {
 
     public void setUploaderId(int uploaderId) {
         this.uploaderId = uploaderId;
+    }
+
+    public boolean isEncrypted() {
+        return isEncrypted;
+    }
+
+    public void setEncrypted(boolean encrypted) {
+        isEncrypted = encrypted;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
+    public void setPrivate(boolean isPrivate) {
+        this.isPrivate = isPrivate;
     }
 }

@@ -5,6 +5,7 @@ import com.lockbox.backend.repositories.FileEncryptorRepository;
 import com.lockbox.backend.repositories.MetaDataRepository;
 import com.lockbox.backend.repositories.UserRepository;
 import com.lockbox.backend.security.TokenService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
@@ -12,101 +13,101 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static com.lockbox.backend.repositories.FileRepository.getFileExtension;
-
-@RestController
+/**
+ * Controller responsible for handling file uploads.
+ */
+@Controller
 @CrossOrigin
 public class FileUploadController {
 
-    MetaDataRepository metaDataRepository;
+    private final MetaDataRepository metaDataRepository;
+
+    @Autowired
     public FileUploadController(MetaDataRepository metaDataRepository) {
         this.metaDataRepository = metaDataRepository;
     }
 
+    /**
+     * Endpoint to upload one or more files.
+     *
+     * @param files List of MultipartFile objects to upload.
+     * @param userId Optional user ID from a cookie.
+     * @param encryptionString Optional encryption key for encrypting the files.
+     * @param isPrivate Flag to indicate if the files should be marked as private.
+     * @return ResponseEntity with the result of the operation.
+     */
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFiles(@RequestParam("files") List<MultipartFile> files,
                                               @CookieValue(value = "userId", required = false) String userId,
-                                              @RequestParam(value = "encryptionString", required = false) String encryptionString) {
-        // Check if files are empty
-        if (files == null || files.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Please select at least one file to upload.");
+                                              @RequestParam(value = "encryptionString", required = false) String encryptionString,
+                                              @RequestParam(value = "private", required = false) boolean isPrivate) {
+        if (files.isEmpty()) {
+            return ResponseEntity.badRequest().body("Please select at least one file to upload.");
         }
 
-        try {
-            String projectRoot = System.getProperty("user.dir");
-            List<String> accessLinks = new ArrayList<>();
+        List<String> accessLinks = new ArrayList<>();
+        String projectRoot = System.getProperty("user.dir");
+        File uploadDir = new File(projectRoot, "uploads");
 
-            for (MultipartFile file : files) {
-                // Generate unique identifier
-                String originalFileName = file.getOriginalFilename();
-                String sanitizedFileName = originalFileName.replaceAll("\\s", "-"); // Replace each space with an dash
+        if (!uploadDir.exists()) {
+            uploadDir.mkdirs();
+        }
 
-                String randomUUID = UUID.randomUUID().toString();
+        for (MultipartFile file : files) {
+            String originalFileName = file.getOriginalFilename();
+            String sanitizedFileName = originalFileName != null ? originalFileName.replaceAll("\\s", "-") : "default-name";
+            String randomUUID = UUID.randomUUID().toString();
+            MetaData metaData = createMetaData(randomUUID, sanitizedFileName, userId, encryptionString, isPrivate, file.getSize());
 
-
-
-
-
-                // Save metadata to the database
-                MetaData metaData = new MetaData();
-                metaData.setUuid(randomUUID);
-                metaData.setFileName(sanitizedFileName);
-                metaData.setLink("/uploads/" + randomUUID);
-                metaData.setSize(file.getSize());
-                metaData.setUploadDate(new Date());
-                metaData.setExtension(getFileExtension(sanitizedFileName));
-                System.out.println("User: " + userId);
-
-                if (userId != null) {
-                    System.out.println("User logged in");
-                    metaData.setUploaderId(Integer.parseInt(userId));
-                } else {
-                    metaData.setUploaderId(0);
-                }
-                if (encryptionString != null) {
-                    metaData.setEncrypted(true);
-                } else {
-                    metaData.setEncrypted(false);
-                }
-                metaDataRepository.save(metaData);
-
-                // Save the file
-                File uploadDir = new File(projectRoot + "/uploads/");
-                if (!uploadDir.exists()) {
-                    uploadDir.mkdirs(); // Create directory if it doesn't exist
-                }
-
+            try {
                 File uploadedFile = new File(uploadDir, randomUUID);
                 file.transferTo(uploadedFile);
-
-                // If encryption string is provided, encrypt the file
-                if (encryptionString != null && !encryptionString.isEmpty()) {
+                if (encryptionString != null && !encryptionString.isBlank()) {
                     FileEncryptorRepository.encryptFile(uploadedFile, encryptionString);
                 }
-
-                // Create access link
-                String accessLink = "/uploads/" + randomUUID;
-                accessLinks.add(accessLink);
+                accessLinks.add("/uploads/" + randomUUID);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload file: " + originalFileName);
             }
 
-            return ResponseEntity.ok(accessLinks.toString());
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload files");
+            metaDataRepository.save(metaData);
         }
+
+        return ResponseEntity.ok(String.join(", ", accessLinks));
     }
 
+    /**
+     * Helper method to create and return a MetaData instance.
+     */
+    private MetaData createMetaData(String uuid, String fileName, String userId, String encryptionString, boolean isPrivate, long fileSize) {
+        MetaData metaData = new MetaData();
+        metaData.setUuid(uuid);
+        metaData.setFileName(fileName);
+        metaData.setLink("/uploads/" + uuid);
+        metaData.setSize(fileSize);
+        metaData.setUploadDate(new Date());
+        metaData.setExtension(getFileExtension(fileName));
+        metaData.setUploaderId(userId != null ? Integer.parseInt(userId) : 0);
+        metaData.setEncrypted(encryptionString != null);
+        metaData.setPrivate(isPrivate);
+        return metaData;
+    }
+
+    /**
+     * Extracts the file extension from the file name.
+     */
+    private String getFileExtension(String fileName) {
+        return fileName.substring(fileName.lastIndexOf(".") + 1);
+    }
 }

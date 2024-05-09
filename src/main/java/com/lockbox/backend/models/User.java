@@ -3,23 +3,44 @@ package com.lockbox.backend.models;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+/**
+ * Entity representing user details in the LockBox application.
+ * This class maps to the 'users' table in the 'lockbox' schema of the database.
+ */
 @Entity
-@Table(schema = "lockbox", name="users")
+@Table(schema = "lockbox", name = "users")
 public final class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
+
+    @Column(nullable = false, unique = true)
     private String email;
+
+    @Column(nullable = false)
     private String password;
+
     private String ipAddress;
     private String country;
-    private String role; // Added field for user role
-    private String accountStatus; // Added field for account status
-    private LocalDateTime lastLogin; // Added field for last login timestamp
 
+    @Column(nullable = false)
+    private String role; // Field for user role
+
+    @Column(nullable = false)
+    private String accountStatus; // Field for account status
+
+    @Column(nullable = false)
+    private LocalDateTime lastLogin; // Field for last login timestamp
+
+    /**
+     * Default constructor for JPA.
+     */
     public User() {
     }
 
+    /**
+     * Constructs a new User instance with all fields initialized.
+     */
     public User(int id, String email, String password, String ipAddress, String country, String role, String accountStatus, LocalDateTime lastLogin) {
         this.id = id;
         this.email = email;
@@ -27,8 +48,18 @@ public final class User {
         this.ipAddress = ipAddress;
         this.country = country;
         this.role = role;
-        this.accountStatus = (accountStatus != null) ? accountStatus : "ACTIVE"; // Set default if not provided
-        this.lastLogin = (lastLogin != null) ? lastLogin : LocalDateTime.now(); // Set default if not provided
+        this.accountStatus = (accountStatus != null) ? accountStatus : "ACTIVE";
+        this.lastLogin = (lastLogin != null) ? lastLogin : LocalDateTime.now();
+    }
+
+    // Getters and Setters
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getEmail() {
@@ -45,14 +76,6 @@ public final class User {
 
     public void setPassword(String password) {
         this.password = password;
-    }
-
-    public int getId() {
-        return this.id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
     }
 
     public String getIpAddress() {

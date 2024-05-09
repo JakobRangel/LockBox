@@ -13,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -40,6 +41,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+/**
+ * Security configuration class for configuring CORS, CSRF, session management, and JWT handling.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -48,47 +52,60 @@ public class SecurityConfig {
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
 
-    @Bean
-    public JwtCookieAuthenticationFilter jwtCookieAuthenticationFilter() {
-        return new JwtCookieAuthenticationFilter(jwtTokenUtil);
-    }
-
     @Autowired
     private RSAKey rsaKey;
+
+    /**
+     * Defines a CORS configuration source with explicit allowed origins, methods, and headers.
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowCredentials(true);  // Important for cookies, authorization headers with HTTPS
-        configuration.addAllowedOrigin("https://jakobrangel.github.io");  // Your frontend URL
-        configuration.addAllowedMethod("*");  // Allow all methods
-        configuration.addAllowedHeader("*");  // Allow all headers
-        configuration.setExposedHeaders(Arrays.asList("Set-Cookie"));  // Expose 'Set-Cookie' header
+        configuration.setAllowCredentials(true);
+        configuration.addAllowedOrigin("https://localhost:443");
+        configuration.addAllowedOrigin("https://lockbox.zip");
+        configuration.addAllowedMethod("*");
+        configuration.addAllowedHeader("*");
+        configuration.setExposedHeaders(Arrays.asList("Set-Cookie"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);  // Apply CORS configuration to all paths
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
+    /**
+     * Security filter chain for HTTP requests, configuring authentication, authorization, and JWT filtering.
+     */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtCookieAuthenticationFilter jwtCookieAuthenticationFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))  // Use custom CORS configuration
-                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/login", "/register", "/upload").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/", "/uploads/**", "/logout", "/auth-status").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register", "/upload").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/", "/uploads/**", "/auth/logout", "/auth/status", "/public-files", "/search-files").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtCookieAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
+                .addFilterBefore(jwtCookieAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .logout(logout -> logout
                         .logoutSuccessHandler(logoutSuccessHandler())
-                        .deleteCookies("token")
-                        .deleteCookies("userId")
+                        .deleteCookies("token", "userId")
                         .logoutSuccessUrl("/"));
 
         return http.build();
     }
 
+    /**
+     * Provides a JWT cookie authentication filter bean.
+     */
+    @Bean
+    public JwtCookieAuthenticationFilter jwtCookieAuthenticationFilter() {
+        return new JwtCookieAuthenticationFilter(jwtTokenUtil);
+    }
+
+    /**
+     * Configures a JWT authentication converter that extracts and converts JWT claims to granted authorities.
+     */
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
@@ -98,6 +115,9 @@ public class SecurityConfig {
         return converter;
     }
 
+    /**
+     * Logout success handler to clear cookies and set response status after successful logout.
+     */
     @Bean
     public LogoutSuccessHandler logoutSuccessHandler() {
         return (request, response, authentication) -> {
@@ -107,35 +127,40 @@ public class SecurityConfig {
         };
     }
 
+    /**
+     * Provides a JWT decoder bean using RSA public key.
+     */
     @Bean
-    public JwtDecoder jwtDecoder(RSAKey rsaKey) throws JOSEException {
+    public JwtDecoder jwtDecoder() throws JOSEException {
         return NimbusJwtDecoder.withPublicKey(rsaKey.toRSAPublicKey()).build();
     }
 
+    /**
+     * Provides a JWT encoder bean.
+     */
     @Bean
-    public JwtEncoder jwtEncoder(JWKSource<SecurityContext> jwks) {
-        return new NimbusJwtEncoder(jwks);
+    public JwtEncoder jwtEncoder() {
+        JWKSet jwkSet = new JWKSet(rsaKey);
+        return new NimbusJwtEncoder(jwkSource(rsaKey));
     }
 
+    /**
+     * JWK source for use with JWT encoder.
+     */
     @Bean
     public JWKSource<SecurityContext> jwkSource(RSAKey rsaKey) {
         JWKSet jwkSet = new JWKSet(rsaKey);
         return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
     }
 
+    /**
+     * Configures the authentication manager with a custom user details service and password encoder.
+     */
     @Bean
     public AuthenticationManager authManager(UserDetailsService userDetailsService) {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(new BCryptPasswordEncoder());
         return new ProviderManager(authProvider);
-    }
-
-    private String extractToken(HttpServletRequest request) {
-        return Arrays.stream(request.getCookies())
-                .filter(cookie -> "token".equals(cookie.getName()))
-                .findFirst()
-                .map(Cookie::getValue)
-                .orElse(null);
     }
 }
