@@ -7,7 +7,7 @@ LockBox is an open-source, secure file storage solution designed to provide maxi
 # ⭐ Features
 
 - **End-to-End Encryption** 🔐 - Files are encrypted before being uploaded, ensuring that they are accessible only by the owner.
-- **OAuth2 Authentication** 👤 - Secure and flexible user authentication using OAuth2 tokens.
+- **JWT Authentication** 👤 - Secure and stateless user authentication using JSON Web Tokens (JWTs).
 - **Audit Trails** 📜 - Detailed logging for file access and downloads, with options for toggling logs.
 - **PostgreSQL Integration** 🐘 - Efficient management of user data and metadata with PostgreSQL.
 - **Spring Security** 🛡️ - Protection against common security threats and vulnerabilities.
@@ -51,7 +51,9 @@ Distributed under the GPL v3.0 License. See LICENSE for more information.
 
 # 🙌 Acknowledgements
 
-Spring Boot
-PostgreSQL
-OAuth 2.0
-Spring Security
+- Spring Boot
+- PostgreSQL
+- JWT
+- Spring Security
+
+Note: This script is intended for personal and educational use only. Use it responsibly and ensure compliance with Kick's terms of service. We are not responsible for any misuse of this script.
