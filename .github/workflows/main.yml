@@ -19,14 +19,6 @@ jobs:
       - name: Build the package
         run: mvn --batch-mode -DskipTests package
 
-      - name: Report
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Maven Tests
-          path: target/surefire-reports/*.xml
-          reporter: java-junit
-          fail-on-error: true
       - name: List files in the repository
         run: ls -la
       - name: Build and push the image
