@@ -60,5 +60,3 @@ Distributed under the GPL v3.0 License. See LICENSE for more information.
 - PostgreSQL
 - JWT
 - Spring Security
-
-Note: This script is intended for personal and educational use only. Use it responsibly and ensure compliance with Kick's terms of service. We are not responsible for any misuse of this script.
